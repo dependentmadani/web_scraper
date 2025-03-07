@@ -1,61 +1,33 @@
-use reqwest::blocking::{get, Response};
+use reqwest::blocking::get;
 use scraper::{Html, Selector};
 use std::io;
 
-fn main() {
-    let mut user_input = String::new();
-    println!("Enter the URL of the website you want to scrape: ");
-    io::stdin().read_line(&mut user_input).unwrap();
-
-    let url: &str = user_input.trim();
-
-    // Prompt the user for the HTML tag to scrape (e.g., "a", "img", "h1")
-    println!("Enter the HTML tag to scrape (e.g., 'a', 'img', 'h1'):");
-    let mut tag = String::new();
+// Prompts the user for input and returns the trimmed input as a String.
+fn prompt_user(prompt: &str) -> String {
+    println!("{}", prompt);
+    let mut input = String::new();
     io::stdin()
-        .read_line(&mut tag)
-        .expect("Failed to read tag input");
-    let tag = tag.trim();
-
-    println!("Do you want to scrape all attributes? (yes/no):");
-    let mut all_attributes = String::new();
-    io::stdin()
-        .read_line(&mut all_attributes)
+        .read_line(&mut input) 
         .expect("Failed to read input");
-    let all_attributes = all_attributes.trim().to_lowercase();
+    input.trim().to_string()
+}
 
-    // Prompt the user for the attribute to scrape (e.g., "href", "src", "class")
-    let attribute = if all_attributes == "yes" {
-        None // Scrape all attributes
-    } else {
-        // Prompt the user for the attribute to scrape (e.g., "href", "src", "class")
-        println!("Enter the attribute to scrape (e.g., 'href', 'src', 'class'):");
-        let mut attribute = String::new();
-        io::stdin()
-            .read_line(&mut attribute)
-            .expect("Failed to read attribute input");
-        Some(attribute.trim().to_string())
-    };
-    
-    // Send a GET request to the URL
-    let response: Response = get(url).expect("Failed to send request");
+// Fetches the HTML content of a given URL.
+fn fetch_html(url: &str) -> Result<String, reqwest::Error> {
+    let response = get(url)?;
     if !response.status().is_success() {
         eprintln!("Failed to fetch the page: {}", response.status());
-        return;
+        std::process::exit(1);
     }
+    response.text()
+}
 
-    // Parse the response body
-    let body: String = response.text().expect("Failed to read response text");
-
-    // Parse the HTML
-    let document: Html = Html::parse_document(&body);
-
-    // Create a selector
+// Scrapes and prints attributes based on user input.
+fn scrape_attributes(document: &Html, tag: &str, attribute: Option<&str>) {
     let selector = Selector::parse(tag).expect("Failed to parse selector");
 
-    // Iterate over elements matching the selector
     for element in document.select(&selector) {
-        if let Some(attr) = &attribute {
+        if let Some(attr) = attribute {
             // Scrape a specific attribute
             if let Some(attr_value) = element.value().attr(attr) {
                 println!("Found {}: {}", attr, attr_value);
@@ -67,4 +39,32 @@ fn main() {
             }
         }
     }
+}
+
+fn main() {
+    // Prompt the user for the URL to scrape
+    let url = prompt_user("Enter the URL to scrape:");
+
+    // Prompt the user for the HTML tag to scrape (e.g., "a", "img", "h1")
+    let tag = prompt_user("Enter the HTML tag to scrape (e.g., 'a', 'img', 'h1'):");
+
+    // Ask the user if they want to scrape all attributes or a specific one
+    let all_attributes = prompt_user("Do you want to scrape all attributes? (yes/no):");
+    let all_attributes = all_attributes.to_lowercase();
+
+    let attribute = if all_attributes == "yes" {
+        None // Scrape all attributes
+    } else {
+        // Prompt the user for the attribute to scrape (e.g., "href", "src", "class")
+        Some(prompt_user("Enter the attribute to scrape (e.g., 'href', 'src', 'class'):"))
+    };
+
+    // Fetch the HTML content of the page
+    let body = fetch_html(&url).expect("Failed to fetch HTML content");
+
+    // Parse the HTML content
+    let document = Html::parse_document(&body);
+
+    // Scrape and print the attributes
+    scrape_attributes(&document, &tag, attribute.as_deref());
 }

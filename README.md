@@ -36,11 +36,11 @@ To use the web scraper, follow these steps:
     ```sh
     cargo run --release
     ```
-2. Configure the scraping rules in the [config.json](http://_vscodecontentref_/1) file.
-3. View the extracted data in the [output.json](http://_vscodecontentref_/2) file.
+2. Configure the scraping rules in the <b>config.json</b> file.
+3. View the extracted data in the <b>output.json</b> file.
 
 ## Configuration
-The scraper can be configured using the [config.json](http://_vscodecontentref_/3) file. Here is an example configuration:
+The scraper can be configured using the <b>config.json</b> file. Here is an example configuration:
 
 ```json
 {
@@ -77,6 +77,6 @@ Contributions are welcome! Please follow these steps to contribute:
 5. Create a pull request.
 
 ## License
-This project is licensed under the MIT License. See the [LICENSE](http://_vscodecontentref_/1) file for details.
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/dependentmadani/web_scraper/blob/master/LICENSE) file for details.
 
 Stay tuned for updates!

@@ -4,21 +4,29 @@ use serde_json::Value;
 use std::fs::File;
 use std::path::Path;
 
-/// Represents a tag and its attributes to scrape.
+// Represents an ML task configuration.
+#[derive(Debug)]
+pub struct MLTask {
+    pub task_type: String,
+    pub enabled: bool,
+}
+
+// Represents a tag and its attributes to scrape.
 #[derive(Debug)]
 pub struct TagConfig {
     pub name: String,
     pub attributes: Vec<String>,
 }
 
-/// Represents the configuration for web scraping.
+// Represents the configuration for web scraping.
 #[derive(Debug)]
 pub struct Config {
     pub url: String,
     pub tags: Vec<TagConfig>,
+    pub ml_tasks: Vec<MLTask>,
 }
 
-/// Reads the configuration from `config.json` or prompts the user for input.
+// Reads the configuration from `config.json` or prompts the user for input.
 pub fn get_config() -> Config {
     if Path::new("config.json").exists() {
         // Read configuration from `config.json`
@@ -42,7 +50,18 @@ pub fn get_config() -> Config {
             })
             .collect();
 
-        Config { url, tags }
+        let ml_tasks = config["ml_tasks"]
+            .as_array()
+            .unwrap_or(&Vec::new())
+            .iter()
+            .map(|task| {
+                let task_type = task["type"].as_str().expect("Missing 'type' in ML task config").to_string();
+                let enabled = task["enabled"].as_bool().unwrap_or(false);
+                MLTask { task_type, enabled }
+            })
+            .collect();
+
+        Config { url, tags, ml_tasks }
     } else {
         // Prompt the user for input
         let url = utils::prompt_user("Enter the URL to scrape:");
@@ -66,6 +85,24 @@ pub fn get_config() -> Config {
             }
         }
 
-        Config { url, tags }
+        // Prompt the user for ML tasks
+        let mut ml_tasks = Vec::new();
+        let enable_sentiment = utils::prompt_user("Do you want to enable sentiment analysis? (yes/no):");
+        if enable_sentiment.to_lowercase() == "yes" {
+            ml_tasks.push(MLTask {
+                task_type: "sentiment_analysis".to_string(),
+                enabled: true,
+            });
+        }
+
+        let enable_ner = utils::prompt_user("Do you want to enable entity recognition? (yes/no):");
+        if enable_ner.to_lowercase() == "yes" {
+            ml_tasks.push(MLTask {
+                task_type: "entity_recognition".to_string(),
+                enabled: true,
+            });
+        }
+
+        Config { url, tags, ml_tasks }
     }
 }

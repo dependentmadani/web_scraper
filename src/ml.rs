@@ -70,6 +70,7 @@ pub fn process_with_ml(data: &[HashMap<String, String>], ml_tasks: &[MLTask]) ->
                     "entity_recognition" => {
                         if let Some(text) = element.get("text") {
                             let entities = extract_entities(text).unwrap_or_else(|_| Vec::new());
+                            println!("{:?}", entities);
                             element_data.insert("entities".to_string(), entities.join(", "));
                         }
                     }

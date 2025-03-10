@@ -95,10 +95,10 @@ pub fn get_config() -> Config {
             });
         }
 
-        let enable_ner = utils::prompt_user("Do you want to enable entity recognition? (yes/no):");
+        let enable_ner = utils::prompt_user("Do you want to enable language detection? (yes/no):");
         if enable_ner.to_lowercase() == "yes" {
             ml_tasks.push(MLTask {
-                task_type: "entity_recognition".to_string(),
+                task_type: "language_detection".to_string(),
                 enabled: true,
             });
         }

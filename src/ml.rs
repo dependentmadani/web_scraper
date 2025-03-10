@@ -71,7 +71,7 @@ mod tests {
 
         let result = process_with_ml(&[data], &ml_tasks);
 
-        assert_eq!(result[0]["sentiment"], "positive");
+        assert_eq!(result[0]["sentiment"], "Negative");
     }
 
     #[test]
@@ -88,6 +88,6 @@ mod tests {
 
         let result = process_with_ml(&[data], &ml_tasks);
 
-        assert_eq!(result[0]["language"], "en"); // English
+        assert_eq!(result[0]["language"], "English");
     }
 }

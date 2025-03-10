@@ -53,3 +53,49 @@ pub fn save_to_json(data: &[HashMap<String, String>], filename: &str) -> io::Res
     println!("Data saved to {}", filename);
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_scrape_attributes_and_content() {
+        let html = r#"
+            <html>
+                <body>
+                    <a href="/link1" class="nav-item">Link 1</a>
+                    <a href="/link2" class="nav-item">Link 2</a>
+                    <p class="description">Some text</p>
+                </body>
+            </html>
+        "#;
+
+        let tag = "a";
+        let attributes = vec!["href".to_string(), "class".to_string()];
+
+        let document = Html::parse_document(html);
+        let result = scrape_attributes_and_content(&document, tag, &attributes);
+
+        assert_eq!(result.len(), 2);
+
+        assert_eq!(result[0]["href"], "/link1");
+        assert_eq!(result[0]["class"], "nav-item");
+        assert_eq!(result[0]["text"], "Link 1");
+
+        assert_eq!(result[1]["href"], "/link2");
+        assert_eq!(result[1]["class"], "nav-item");
+        assert_eq!(result[1]["text"], "Link 2");
+    }
+
+    #[test]
+    fn test_scrape_no_matching_tag() {
+        let html = r#"<html><body><p>No links here</p></body></html>"#;
+        let tag = "a";
+        let attributes = vec!["href".to_string()];
+
+        let document = Html::parse_document(html);
+        let result = scrape_attributes_and_content(&document, tag, &attributes);
+
+        assert_eq!(result.len(), 0);
+    }
+}

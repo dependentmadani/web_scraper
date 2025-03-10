@@ -1,57 +1,25 @@
-use pyo3::prelude::*;
+use rust_bert::pipelines::sentiment::SentimentModel;
 use std::collections::HashMap;
-use std::ffi::CString;
 use crate::config::MLTask;
 
-// Predicts sentiment using a Python model.
-fn predict_sentiment(text: &str) -> PyResult<String> {
-    Python::with_gil(|py| {
-        let predict_sentiment: Py<PyAny> = PyModule::from_code(
-            py,
-            &CString::new(r#"
-            import joblib
-
-            def predict_sentiment(text):
-                model = joblib.load("sentiment_model.pkl")
-                return model.predict([text])[0]
-            "#).unwrap(),
-            &CString::new("predict_sentiment.py").unwrap(),
-            &CString::new("predict_sentiment").unwrap(),
-        )?
-        .getattr("predict_sentiment")?
-        .into();
-
-        let result: String = predict_sentiment.call1(py, (text,))?.extract(py)?;
-        Ok(result)
-    })
+fn predict_sentiment(text: &str) -> String {
+    let sentiment_model = SentimentModel::new(Default::default()).unwrap();
+    let sentiments = sentiment_model.predict(&[text]);
+    format!("{:?}", sentiments[0].polarity)
 }
 
-// Extracts entities using a Python model.
-fn extract_entities(text: &str) -> PyResult<Vec<String>> {
-    Python::with_gil(|py| {
-        let extract_entities: Py<PyAny> = PyModule::from_code(
-            py,
-            &CString::new(r#"
-            import spacy
 
-            nlp = spacy.load("en_core_web_sm")
+/// Extracts entities using a Python model.
+fn extract_entities(text: &str) -> Vec<String> {
 
-            def extract_entities(text):
-                doc = nlp(text)
-                return [ent.text for ent in doc.ents]
-            "#).unwrap(),
-            &CString::new("extract_entities.py").unwrap(),
-            &CString::new("extract_entities").unwrap(),
-        )?
-        .getattr("extract_entities")?
-        .into();
 
-        let result: Vec<String> = extract_entities.call1(py, (text,))?.extract(py)?;
-        Ok(result)
-    })
+    text.split_whitespace()
+        .filter(|word| word.chars().next().unwrap().is_uppercase())
+        .map(|word| word.to_string())
+        .collect()
 }
 
-// Processes scraped data with ML tasks.
+/// Processes scraped data with ML tasks.
 pub fn process_with_ml(data: &[HashMap<String, String>], ml_tasks: &[MLTask]) -> Vec<HashMap<String, String>> {
     let mut processed_data = Vec::new();
 
@@ -63,14 +31,13 @@ pub fn process_with_ml(data: &[HashMap<String, String>], ml_tasks: &[MLTask]) ->
                 match task.task_type.as_str() {
                     "sentiment_analysis" => {
                         if let Some(text) = element.get("text") {
-                            let sentiment = predict_sentiment(text).unwrap_or_else(|_| "unknown".to_string());
+                            let sentiment = predict_sentiment(text);
                             element_data.insert("sentiment".to_string(), sentiment);
                         }
                     }
                     "entity_recognition" => {
                         if let Some(text) = element.get("text") {
-                            let entities = extract_entities(text).unwrap_or_else(|_| Vec::new());
-                            println!("{:?}", entities);
+                            let entities = extract_entities(text);
                             element_data.insert("entities".to_string(), entities.join(", "));
                         }
                     }
@@ -83,4 +50,43 @@ pub fn process_with_ml(data: &[HashMap<String, String>], ml_tasks: &[MLTask]) ->
     }
 
     processed_data
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_process_with_ml_sentiment_analysis() {
+        let mut data = HashMap::new();
+        data.insert("text".to_string(), "I love Rust!".to_string());
+
+        let ml_tasks = vec![
+            MLTask {
+                task_type: "sentiment_analysis".to_string(),
+                enabled: true,
+            },
+        ];
+
+        let result = process_with_ml(&[data], &ml_tasks);
+        assert_eq!(result[0]["sentiment"], "positive");
+    }
+
+    #[test]
+    fn test_process_with_ml_entity_recognition() {
+        let mut data = HashMap::new();
+        data.insert("text".to_string(), "Rust is developed by Mozilla.".to_string());
+
+        let ml_tasks = vec![
+            MLTask {
+                task_type: "entity_recognition".to_string(),
+                enabled: true,
+            },
+        ];
+
+        let result = process_with_ml(&[data], &ml_tasks);
+
+        assert_eq!(result[0]["entities"], "Rust, Mozilla");
+    }
 }

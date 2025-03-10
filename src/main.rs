@@ -13,7 +13,13 @@ fn main() {
     let config = get_config();
 
     // Fetch the HTML content of the page
-    let body = utils::fetch_html(&config.url).expect("Failed to fetch HTML content");
+    let body = match utils::fetch_html(&config.url) {
+        Ok(body) => body,
+        Err(err) => {
+            eprintln!("Something wrong with the url: {}", err);
+            std::process::exit(1);
+        }
+    };
 
     // Parse the HTML content
     let document = Html::parse_document(&body);

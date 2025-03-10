@@ -106,3 +106,49 @@ pub fn get_config() -> Config {
         Config { url, tags, ml_tasks }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::File;
+    use std::io::Write;
+
+    #[test]
+    fn test_get_config_from_file() {
+        // Create a temporary config.json file
+        let config_json = r#"
+        {
+            "url": "https://example.com",
+            "tags": [
+                {
+                    "name": "a",
+                    "attributes": ["href", "class"]
+                }
+            ],
+            "ml_tasks": [
+                {
+                    "type": "sentiment_analysis",
+                    "enabled": true
+                }
+            ]
+        }
+        "#;
+
+        let mut file = File::create("config.json").unwrap();
+        file.write_all(config_json.as_bytes()).unwrap();
+
+        // Test the function
+        let config = get_config();
+
+        assert_eq!(config.url, "https://example.com");
+        assert_eq!(config.tags.len(), 1);
+        assert_eq!(config.tags[0].name, "a");
+        assert_eq!(config.tags[0].attributes, vec!["href", "class"]);
+        assert_eq!(config.ml_tasks.len(), 1);
+        assert_eq!(config.ml_tasks[0].task_type, "sentiment_analysis");
+        assert!(config.ml_tasks[0].enabled);
+
+        // Clean up
+        std::fs::remove_file("config.json").unwrap();
+    }
+}

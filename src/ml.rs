@@ -1,22 +1,22 @@
 use rust_bert::pipelines::sentiment::SentimentModel;
+use whatlang::detect;
 use std::collections::HashMap;
 use crate::config::MLTask;
 
+/// Predicts sentiment using a pre-trained Rust-BERT model.
 fn predict_sentiment(text: &str) -> String {
+    // Load the sentiment model (this should be cached after the first load)
     let sentiment_model = SentimentModel::new(Default::default()).unwrap();
+
+    // Get the sentiment prediction
     let sentiments = sentiment_model.predict(&[text]);
     format!("{:?}", sentiments[0].polarity)
 }
 
-
-/// Extracts entities using a Python model.
-fn extract_entities(text: &str) -> Vec<String> {
-
-
-    text.split_whitespace()
-        .filter(|word| word.chars().next().unwrap().is_uppercase())
-        .map(|word| word.to_string())
-        .collect()
+/// Detects the language of the text using Whatlang.
+fn detect_language(text: &str) -> String {
+    let info = detect(text).unwrap();
+    info.lang().to_string()
 }
 
 /// Processes scraped data with ML tasks.
@@ -35,10 +35,10 @@ pub fn process_with_ml(data: &[HashMap<String, String>], ml_tasks: &[MLTask]) ->
                             element_data.insert("sentiment".to_string(), sentiment);
                         }
                     }
-                    "entity_recognition" => {
+                    "language_detection" => {
                         if let Some(text) = element.get("text") {
-                            let entities = extract_entities(text);
-                            element_data.insert("entities".to_string(), entities.join(", "));
+                            let language = detect_language(text);
+                            element_data.insert("language".to_string(), language);
                         }
                     }
                     _ => {}
@@ -70,23 +70,24 @@ mod tests {
         ];
 
         let result = process_with_ml(&[data], &ml_tasks);
+
         assert_eq!(result[0]["sentiment"], "positive");
     }
 
     #[test]
-    fn test_process_with_ml_entity_recognition() {
+    fn test_process_with_ml_language_detection() {
         let mut data = HashMap::new();
-        data.insert("text".to_string(), "Rust is developed by Mozilla.".to_string());
+        data.insert("text".to_string(), "Rust is a systems programming language.".to_string());
 
         let ml_tasks = vec![
             MLTask {
-                task_type: "entity_recognition".to_string(),
+                task_type: "language_detection".to_string(),
                 enabled: true,
             },
         ];
 
         let result = process_with_ml(&[data], &ml_tasks);
 
-        assert_eq!(result[0]["entities"], "Rust, Mozilla");
+        assert_eq!(result[0]["language"], "en"); // English
     }
 }

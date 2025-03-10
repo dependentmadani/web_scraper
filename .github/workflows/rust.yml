@@ -10,11 +10,46 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  build-and-test:
 
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
+
+    # Install system dependencies for tch (libtorch)
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libclang-dev libopencv-dev
+
+    # Set up Python (if needed for other parts of your project)
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    # Install Rust
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+
+    # Cache Cargo dependencies
+    - name: Cache cargo registry
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    # Build the project
     - name: Build
       run: cargo build --verbose
+
+    # Run tests
+    - name: Run tests
+      run: cargo test --verbose
